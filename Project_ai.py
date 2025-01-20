@@ -75,7 +75,9 @@ def move_macan(event):
     else:
         # Pindahkan Macan ke kotak tujuan
         current_row, current_col = selected_macan
-        if (row == current_row and abs(col - current_col) == 1) or (col == current_col and abs(row - current_row) == 1):
+        if (abs(row - current_row) == 1 and abs(col - current_col) == 1) or \
+           (row == current_row and abs(col - current_col) == 1) or \
+           (col == current_col and abs(row - current_row) == 1):
             if papan[row][col] == " ":
                 papan[current_row][current_col] = " "
                 papan[row][col] = "M"
@@ -86,7 +88,7 @@ def move_macan(event):
             else:
                 messagebox.showinfo("Info", "Kotak tujuan sudah terisi. Silakan pilih kotak lain.")
         else:
-            messagebox.showinfo("Info", "Macan hanya bisa berpindah satu kotak ke atas, bawah, kiri, atau kanan.")
+            messagebox.showinfo("Info", "Macan hanya bisa berpindah satu kotak ke arah horizontal, vertikal, atau diagonal.")
 
 def move_wong():
     best_move = find_best_move_wong()
@@ -174,10 +176,14 @@ def evaluate_board():
 
 def get_possible_moves(row, col):
     moves = []
-    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-        new_row, new_col = row + dr, col + dc
-        if 0 <= new_row < BOARD_ROWS and 0 <= new_col < BOARD_COLS:
-            moves.append((new_row, new_col))
+    # Gerakan horizontal, vertikal, dan diagonal
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            if dr == 0 and dc == 0:
+                continue  # Skip posisi saat ini
+            new_row, new_col = row + dr, col + dc
+            if 0 <= new_row < BOARD_ROWS and 0 <= new_col < BOARD_COLS:
+                moves.append((new_row, new_col))
     return moves
 
 # Membuat window Tkinter
