@@ -14,6 +14,9 @@ macan_count = 0
 selected_macan = None  # Untuk menyimpan posisi Macan yang dipilih
 placing_macan = True  # Mode untuk menempatkan Macan
 
+# Konstanta untuk Min-Max
+MAX_DEPTH = 3
+
 def draw_board(canvas):
     for i in range(BOARD_ROWS):
         for j in range(BOARD_COLS):
@@ -158,10 +161,16 @@ def min_max(depth, is_maximizing):
         return best_value
 
 def evaluate_board():
-    # Fungsi evaluasi sederhana: jumlah Wong - jumlah Macan
-    wong_count = sum(row.count("W") for row in papan)
-    macan_count = sum(row.count("M") for row in papan)
-    return wong_count - macan_count
+    # Fungsi evaluasi: Wong mencoba menjauh dari Macan
+    wong_positions = [(i, j) for i in range(BOARD_ROWS) for j in range(BOARD_COLS) if papan[i][j] == "W"]
+    macan_positions = [(i, j) for i in range(BOARD_ROWS) for j in range(BOARD_COLS) if papan[i][j] == "M"]
+
+    total_distance = 0
+    for wong in wong_positions:
+        for macan in macan_positions:
+            total_distance += abs(wong[0] - macan[0]) + abs(wong[1] - macan[1])  # Jarak Manhattan
+
+    return total_distance  # Semakin besar jarak, semakin baik untuk Wong
 
 def get_possible_moves(row, col):
     moves = []
