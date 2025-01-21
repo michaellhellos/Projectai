@@ -12,14 +12,13 @@ CELL_SIZE = 50
 # Inisialisasi papan
 papan = [[" " for _ in range(BOARD_COLS)] for _ in range(BOARD_ROWS)]
 macan_count = 0
-selected_macan = None  # Untuk menyimpan posisi Macan yang dipilih
-placing_macan = True  # Mode untuk menempatkan Macan
+selected_wong = None  # Untuk menyimpan posisi Wong yang dipilih
+placing_wong = True  # Mode untuk menempatkan Wong
 start_time = None
 timer_label = None
-wong_count = 0  # Jumlah Wong yang sudah ditempatkan
 
 # Konstanta untuk Min-Max
-MAX_DEPTH = 3  # Kedalaman rekursi untuk Min-Max
+MAX_DEPTH = 4  # Kedalaman rekursi ditingkatkan
 
 def draw_board(canvas):
     for i in range(BOARD_ROWS):
@@ -32,37 +31,35 @@ def draw_board(canvas):
             elif papan[i][j] == "W":
                 canvas.create_text(x0 + CELL_SIZE // 2, y0 + CELL_SIZE // 2, text="W", font=("Arial", 24), fill="blue")
 
-def place_macan(event):
-    global macan_count, placing_macan
-    if placing_macan and macan_count < 2:
+def place_wong(event):
+    global placing_wong
+    if placing_wong:
         col = event.x // CELL_SIZE
         row = event.y // CELL_SIZE
         if 0 <= row < BOARD_ROWS and 0 <= col < BOARD_COLS and papan[row][col] == " ":
-            papan[row][col] = "M"
-            macan_count += 1
+            papan[row][col] = "W"
             canvas.delete("all")
             draw_board(canvas)
-            if macan_count == 2:
-                placing_macan = False  # Selesai menempatkan Macan
-                place_wong()  # Tempatkan Wong setelah Macan selesai
-                messagebox.showinfo("Info", "Macan telah ditempatkan. Sekarang giliran Macan untuk bergerak.")
-                canvas.unbind("<Button-1>")  # Hapus binding untuk place_macan
-                canvas.bind("<Button-1>", move_macan)  # Binding baru untuk move_macan
+            if count_wong() == 8:  # Semua Wong sudah ditempatkan
+                placing_wong = False
+                place_macan()  # Tempatkan Macan setelah Wong selesai
+                messagebox.showinfo("Info", "Wong telah ditempatkan. Sekarang giliran Wong untuk bergerak.")
+                canvas.unbind("<Button-1>")  # Hapus binding untuk place_wong
+                canvas.bind("<Button-1>", move_wong)  # Binding baru untuk move_wong
                 start_timer()
         else:
             messagebox.showinfo("Info", "Posisi tidak valid atau sudah terisi. Silakan pilih posisi lain.")
-    else:
-        messagebox.showinfo("Info", "Anda sudah menempatkan 2 Macan.")
 
-def place_wong():
-    global wong_count
-    while wong_count < 8:
+def place_macan():
+    # Tempatkan 2 Macan secara acak
+    global macan_count
+    macan_count = 0
+    while macan_count < 2:
         row = random.randint(0, BOARD_ROWS - 1)
         col = random.randint(0, BOARD_COLS - 1)
         if papan[row][col] == " ":
-            papan[row][col] = "W"
-            wong_count += 1
-            break  # Hanya tambahkan satu Wong per giliran
+            papan[row][col] = "M"
+            macan_count += 1
     canvas.delete("all")
     draw_board(canvas)
 
@@ -75,73 +72,53 @@ def can_eat_wong(start_row, start_col, end_row, end_col):
     if abs(start_row - end_row) == 2 and start_col == end_col:
         mid_row = (start_row + end_row) // 2
         if papan[mid_row][start_col] == "W" and papan[end_row][end_col] == " ":
-            return True
+            return (mid_row, start_col)  # Kembalikan posisi Wong yang dilompati
     # Gerakan vertikal
     elif abs(start_col - end_col) == 2 and start_row == end_row:
         mid_col = (start_col + end_col) // 2
         if papan[start_row][mid_col] == "W" and papan[end_row][end_col] == " ":
-            return True
+            return (start_row, mid_col)  # Kembalikan posisi Wong yang dilompati
     # Gerakan diagonal (seperti "X" atas-bawah)
     elif abs(start_row - end_row) == 2 and abs(start_col - end_col) == 2:
         mid_row = (start_row + end_row) // 2
         mid_col = (start_col + end_col) // 2
         if papan[mid_row][mid_col] == "W" and papan[end_row][end_col] == " ":
-            return True
-    return False
+            return (mid_row, mid_col)  # Kembalikan posisi Wong yang dilompati
+    return None  # Tidak ada Wong yang bisa dimakan
 
-def move_macan(event):
-    global selected_macan, wong_count
+def move_wong(event):
+    global selected_wong
     col = event.x // CELL_SIZE
     row = event.y // CELL_SIZE
 
-    if selected_macan is None:
-        # Pilih Macan yang akan dipindahkan
-        if 0 <= row < BOARD_ROWS and 0 <= col < BOARD_COLS and papan[row][col] == "M":
-            selected_macan = (row, col)
-            messagebox.showinfo("Info", f"Macan dipilih di posisi ({row}, {col}). Pilih kotak tujuan.")
+    if selected_wong is None:
+        # Pilih Wong yang akan dipindahkan
+        if 0 <= row < BOARD_ROWS and 0 <= col < BOARD_COLS and papan[row][col] == "W":
+            selected_wong = (row, col)
+            messagebox.showinfo("Info", f"Wong dipilih di posisi ({row}, {col}). Pilih kotak tujuan.")
         else:
-            messagebox.showinfo("Info", "Silakan pilih Macan yang valid.")
+            messagebox.showinfo("Info", "Silakan pilih Wong yang valid.")
     else:
-        # Pindahkan Macan ke kotak tujuan
-        current_row, current_col = selected_macan
+        # Pindahkan Wong ke kotak tujuan
+        current_row, current_col = selected_wong
         if (abs(row - current_row) == 1 and abs(col - current_col) == 1) or \
            (row == current_row and abs(col - current_col) == 1) or \
            (col == current_col and abs(row - current_row) == 1):
             if papan[row][col] == " ":
                 papan[current_row][current_col] = " "
-                papan[row][col] = "M"
-                selected_macan = None
+                papan[row][col] = "W"
+                selected_wong = None
                 canvas.delete("all")
                 draw_board(canvas)
                 if is_macan_trapped():  # Cek apakah Macan dikepung
-                    messagebox.showinfo("Info", "Macan dikepung! Wong menang.")
+                    messagebox.showinfo("Info", "Wong menang! Macan dikepung.")
                     root.quit()
                 else:
-                    if wong_count < 8:
-                        place_wong()  # Tambahkan satu Wong setelah Macan bergerak
-                    move_wong()  # Panggil fungsi untuk memindahkan Wong setelah Macan bergerak
+                    move_macan_bot()  # Panggil fungsi untuk memindahkan Macan setelah Wong bergerak
             else:
                 messagebox.showinfo("Info", "Kotak tujuan sudah terisi. Silakan pilih kotak lain.")
-        elif abs(row - current_row) == 2 or abs(col - current_col) == 2:
-            if can_eat_wong(current_row, current_col, row, col):
-                mid_row = (current_row + row) // 2
-                mid_col = (current_col + col) // 2
-                papan[current_row][current_col] = " "
-                papan[mid_row][mid_col] = " "
-                papan[row][col] = "M"
-                selected_macan = None
-                canvas.delete("all")
-                draw_board(canvas)
-                if count_wong() <= 2:
-                    messagebox.showinfo("Info", "Macan menang! Wong hampir habis.")
-                    root.quit()
-                if wong_count < 8:
-                    place_wong()  # Tambahkan satu Wong setelah Macan bergerak
-                move_wong()  # Panggil fungsi untuk memindahkan Wong setelah Macan bergerak
-            else:
-                messagebox.showinfo("Info", "Tidak bisa memakan Wong.")
         else:
-            messagebox.showinfo("Info", "Macan hanya bisa berpindah satu kotak atau melompati Wong.")
+            messagebox.showinfo("Info", "Wong hanya bisa berpindah satu kotak.")
 
 def is_macan_trapped():
     # Cek apakah Macan tidak bisa bergerak lagi
@@ -153,16 +130,26 @@ def is_macan_trapped():
                     return False  # Masih ada langkah yang bisa dilakukan
     return True  # Macan dikepung
 
-def move_wong():
-    best_move = find_best_move_wong()
+def move_macan_bot():
+    best_move = find_best_move_macan()
     if best_move:
         (start_row, start_col), (end_row, end_col) = best_move
+        # Cek apakah Macan bisa memakan Wong
+        eaten_wong = can_eat_wong(start_row, start_col, end_row, end_col)
+        if eaten_wong:
+            # Hapus Wong yang dilompati
+            wong_row, wong_col = eaten_wong
+            papan[wong_row][wong_col] = " "
+        # Pindahkan Macan
         papan[start_row][start_col] = " "
-        papan[end_row][end_col] = "W"
+        papan[end_row][end_col] = "M"
         canvas.delete("all")
         draw_board(canvas)
+        if count_wong() <= 2:
+            messagebox.showinfo("Info", "Macan menang! Wong hampir habis.")
+            root.quit()
 
-def find_best_move_wong():
+def find_best_move_macan():
     _, best_move = min_max(MAX_DEPTH, True, -math.inf, math.inf)
     return best_move
 
@@ -175,17 +162,25 @@ def min_max(depth, is_maximizing, alpha, beta):
         best_move = None
         for i in range(BOARD_ROWS):
             for j in range(BOARD_COLS):
-                if papan[i][j] == "W":
+                if papan[i][j] == "M":
                     moves = get_possible_moves(i, j)
                     for move in moves:
                         row, col = move
                         if papan[row][col] == " ":
                             # Simulasikan langkah
                             papan[i][j] = " "
-                            papan[row][col] = "W"
+                            papan[row][col] = "M"
+                            # Cek apakah Macan bisa memakan Wong
+                            eaten_wong = can_eat_wong(i, j, row, col)
+                            if eaten_wong:
+                                wong_row, wong_col = eaten_wong
+                                papan[wong_row][wong_col] = " "  # Hapus Wong yang dilompati
                             value, _ = min_max(depth - 1, False, alpha, beta)
+                            # Kembalikan papan ke keadaan semula
                             papan[row][col] = " "
-                            papan[i][j] = "W"
+                            papan[i][j] = "M"
+                            if eaten_wong:
+                                papan[wong_row][wong_col] = "W"  # Kembalikan Wong yang dihapus
 
                             if value > best_value:
                                 best_value = value
@@ -199,17 +194,17 @@ def min_max(depth, is_maximizing, alpha, beta):
         best_move = None
         for i in range(BOARD_ROWS):
             for j in range(BOARD_COLS):
-                if papan[i][j] == "M":
+                if papan[i][j] == "W":
                     moves = get_possible_moves(i, j)
                     for move in moves:
                         row, col = move
                         if papan[row][col] == " ":
                             # Simulasikan langkah
                             papan[i][j] = " "
-                            papan[row][col] = "M"
+                            papan[row][col] = "W"
                             value, _ = min_max(depth - 1, True, alpha, beta)
                             papan[row][col] = " "
-                            papan[i][j] = "M"
+                            papan[i][j] = "W"
 
                             if value < best_value:
                                 best_value = value
@@ -220,29 +215,25 @@ def min_max(depth, is_maximizing, alpha, beta):
         return best_value, best_move
 
 def evaluate_board():
-    # Fungsi evaluasi: Wong mencoba menjauh dari Macan dan mengepungnya
+    # Fungsi evaluasi: Macan mencoba memakan Wong dan menghindari pengepungan
     wong_positions = [(i, j) for i in range(BOARD_ROWS) for j in range(BOARD_COLS) if papan[i][j] == "W"]
     macan_positions = [(i, j) for i in range(BOARD_ROWS) for j in range(BOARD_COLS) if papan[i][j] == "M"]
 
     total_distance = 0
-    surround_score = 0
-
-    for wong in wong_positions:
-        for macan in macan_positions:
-            total_distance += abs(wong[0] - macan[0]) + abs(wong[1] - macan[1])  # Jarak Manhattan
-
-    # Hitung formasi pengepungan
     for macan in macan_positions:
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                if dr == 0 and dc == 0:
-                    continue
-                nr, nc = macan[0] + dr, macan[1] + dc
-                if 0 <= nr < BOARD_ROWS and 0 <= nc < BOARD_COLS:
-                    if papan[nr][nc] == "W":
-                        surround_score += 1
+        for wong in wong_positions:
+            total_distance += abs(macan[0] - wong[0]) + abs(macan[1] - wong[1])  # Jarak Manhattan
 
-    return total_distance + surround_score * 10  # Semakin besar jarak dan pengepungan, semakin baik untuk Wong
+    # Bonus untuk posisi yang memungkinkan makan Wong dalam jumlah genap
+    eat_score = 0
+    for macan in macan_positions:
+        for move in get_possible_moves(macan[0], macan[1]):
+            if can_eat_wong(macan[0], macan[1], move[0], move[1]):
+                # Cek apakah jumlah Wong yang bisa dimakan adalah genap
+                if count_wong() % 2 == 0:
+                    eat_score += 10
+
+    return -total_distance + eat_score  # Semakin kecil jarak dan semakin banyak kesempatan makan, semakin baik untuk Macan
 
 def get_possible_moves(row, col):
     moves = []
@@ -282,8 +273,8 @@ root.title("Game Macanan Jogja")
 canvas = tk.Canvas(root, width=BOARD_COLS * CELL_SIZE, height=BOARD_ROWS * CELL_SIZE)
 canvas.pack()
 
-# Mengikat event klik mouse ke fungsi place_macan
-canvas.bind("<Button-1>", place_macan)  # Klik kiri untuk menempatkan Macan
+# Mengikat event klik mouse ke fungsi place_wong
+canvas.bind("<Button-1>", place_wong)  # Klik kiri untuk menempatkan Wong
 
 # Menampilkan papan awal
 draw_board(canvas)
